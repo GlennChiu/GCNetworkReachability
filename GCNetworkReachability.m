@@ -112,6 +112,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 + (GCNetworkReachability *)reachabilityForLocalWiFi
 {
     _localWiFi = YES;
+    
     static const u_int32_t localAddr = 0xA9FE0000; /* == 169.254.0.0 */
     return [self reachabilityWithInternetAddress:localAddr];
 }
@@ -135,8 +136,6 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     self = [super init];
     if (self)
     {
-        _localWiFi = NO;
-        
         if (!reachability)
         {
             GCNRLog(@"Creating SNNetworkReachabilityRef failed with error code: %s", SCErrorString(SCError()));
@@ -146,6 +145,8 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
         self->_networkReachability = reachability;
         
         self->_lock_queue = dispatch_queue_create("com.gcnetworkreachability.lock.queue", DISPATCH_QUEUE_CONCURRENT);
+        
+        _localWiFi = NO;
     }
     return self;
 }
@@ -198,30 +199,20 @@ static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkConnect
     
     if (flags & kSCNetworkFlagsReachable)
     {
-        flags &= ~kSCNetworkReachabilityFlagsReachable;
-        
         if (_localWiFi)
         {
             status |= (flags & kSCNetworkReachabilityFlagsIsDirect) ? GCNetworkReachabilityStatusWiFi : GCNetworkReachabilityStatusNotReachable;
-            
-            flags &= ~kSCNetworkReachabilityFlagsIsDirect;
-            flags &= ~kSCNetworkReachabilityFlagsIsLocalAddress;
         }
         else if ((flags & kSCNetworkReachabilityFlagsConnectionOnTraffic) || (flags & kSCNetworkReachabilityFlagsConnectionOnDemand))
         {
             if (flags & kSCNetworkReachabilityFlagsInterventionRequired)
             {
                 status |= (flags & kSCNetworkReachabilityFlagsConnectionRequired) ? GCNetworkReachabilityStatusNotReachable : GCNetworkReachabilityStatusWiFi;
-                
-                flags &= ~kSCNetworkReachabilityFlagsInterventionRequired;
             }
             else
             {
                 status |= GCNetworkReachabilityStatusWiFi;
             }
-            
-            flags &= ~kSCNetworkReachabilityFlagsConnectionOnTraffic;
-            flags &= ~kSCNetworkReachabilityFlagsConnectionOnDemand;
         }
         else
         {
