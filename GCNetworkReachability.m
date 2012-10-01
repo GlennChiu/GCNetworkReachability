@@ -72,13 +72,11 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 
 @interface GCNetworkReachability ()
 
-@property (readwrite, assign, nonatomic) GCNetworkReachabilityStatus networkReachabilityStatus;
-
 @end
 
 @implementation GCNetworkReachability
 {
-    dispatch_queue_t _reachability_queue, _lock_queue;
+    dispatch_queue_t _reachability_queue;
     SCNetworkReachabilityRef _networkReachability;
     void(^_handler_blk)(GCNetworkReachabilityStatus status);
 }
@@ -88,7 +86,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     return hostName ? [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])] : nil;
 }
 
-+ (GCNetworkReachability *)reachabilityWithAddress:(const struct sockaddr_in *)hostAddress
++ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr_in *)hostAddress
 {
     return hostAddress ? [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)] : nil;
 }
@@ -100,7 +98,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 	address.sin_len = sizeof(address);
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = htonl(internetAddress);
-	return [self reachabilityWithAddress:&address];
+	return [self reachabilityWithHostAddress:&address];
 }
 
 + (GCNetworkReachability *)reachabilityForInternetConnection
@@ -117,11 +115,11 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     return [self reachabilityWithInternetAddress:localAddr];
 }
 
-- (id)initWithAddress:(const struct sockaddr_in *)address
+- (id)initWithHostAddress:(const struct sockaddr_in *)hostAddress
 {
-    assert(address);
+    assert(hostAddress);
     
-    return [self initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)address)];
+    return [self initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)];
 }
 
 - (id)initWithHostName:(NSString *)hostName
@@ -144,8 +142,6 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
         
         self->_networkReachability = reachability;
         
-        self->_lock_queue = dispatch_queue_create("com.gcnetworkreachability.lock.queue", DISPATCH_QUEUE_CONCURRENT);
-        
         _localWiFi = NO;
     }
     return self;
@@ -166,31 +162,11 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 {
     [self stopNotifier];
     
-    if (self->_lock_queue)
-    {
-        GC_DISPATCH_RELEASE(self->_lock_queue);
-        self->_lock_queue = NULL;
-    }
-    
     if (self->_networkReachability)
     {
         CFRelease(self->_networkReachability);
         self->_networkReachability = NULL;
     }
-}
-
-- (GCNetworkReachabilityStatus)networkReachabilityStatus
-{
-    __block GCNetworkReachabilityStatus status = (GCNetworkReachabilityStatus)0;
-    dispatch_block_t blk = ^{status = self.networkReachabilityStatus;};
-    dispatch_sync(self->_lock_queue, blk);
-    return status;
-}
-
-- (void)setNetworkReachabilityStatus:(GCNetworkReachabilityStatus)networkReachabilityStatus
-{
-    dispatch_block_t blk = ^{self.networkReachabilityStatus = networkReachabilityStatus;};
-    dispatch_barrier_async(self->_lock_queue, blk);
 }
 
 static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkConnectionFlags flags)
@@ -243,24 +219,27 @@ static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkConnect
     return [self currentReachabilityStatus] != GCNetworkReachabilityStatusNotReachable;
 }
 
-- (BOOL)isReachableViaWWAN
-{
-    return [self currentReachabilityStatus] & GCNetworkReachabilityStatusWWAN;
-}
-
 - (BOOL)isReachableViaWiFi
 {
-    return [self currentReachabilityStatus] & GCNetworkReachabilityStatusWiFi;
+    return ([self currentReachabilityStatus] & GCNetworkReachabilityStatusWiFi) == GCNetworkReachabilityStatusWiFi;
 }
+
+#if TARGET_OS_IPHONE
+- (BOOL)isReachableViaWWAN
+{
+    return ([self currentReachabilityStatus] & GCNetworkReachabilityStatusWWAN) == GCNetworkReachabilityStatusWWAN;
+}
+#endif
 
 static const void * GCNetworkReachabilityRetainCallback(const void *info)
 {
     void(^blk)(GCNetworkReachabilityStatus status) = (__bridge void(^)(GCNetworkReachabilityStatus status))info;
-    return (__bridge const void *)([blk copy]);
+    return CFBridgingRetain(blk);
 }
 
 static void GCNetworkReachabilityReleaseCallback(const void *info)
 {
+    CFRelease(info);
     info = NULL;
 }
 
@@ -289,7 +268,7 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNet
     GCNetworkReachabilityPostNotification(info, status);
 }
 
-- (void)startNotifierWithHandler:(void(^)(void))block
+- (void)startNotifierWithHandler:(void(^)(GCNetworkReachabilityStatus status))block
 {
     if (block)
     {
@@ -297,7 +276,6 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNet
         
         void(^cb_blk)(GCNetworkReachabilityStatus status) = ^(GCNetworkReachabilityStatus status) {
             
-            self.networkReachabilityStatus = status;
             self->_handler_blk(status);
         };
         

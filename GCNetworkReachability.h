@@ -44,11 +44,9 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 
 @interface GCNetworkReachability : NSObject
 
-@property (readonly, assign, nonatomic) GCNetworkReachabilityStatus networkReachabilityStatus;
-
 + (GCNetworkReachability *)reachabilityWithHostName:(NSString *)hostName;
 
-+ (GCNetworkReachability *)reachabilityWithAddress:(const struct sockaddr_in *)hostAddress;
++ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr_in *)hostAddress;
 
 + (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress;
 
@@ -57,7 +55,7 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 + (GCNetworkReachability *)reachabilityForLocalWiFi;
 
 
-- (id)initWithAddress:(const struct sockaddr_in *)address;
+- (id)initWithHostAddress:(const struct sockaddr_in *)hostAddress;
 
 - (id)initWithHostName:(NSString *)hostName;
 
@@ -69,12 +67,13 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 
 - (BOOL)isReachable;
 
-- (BOOL)isReachableViaWWAN;
-
 - (BOOL)isReachableViaWiFi;
 
+#if TARGET_OS_IPHONE
+- (BOOL)isReachableViaWWAN;
+#endif
 
-- (void)startNotifierWithHandler:(void(^)(void))block;
+- (void)startNotifierWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
 
 - (void)stopNotifier;
 
