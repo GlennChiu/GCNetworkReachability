@@ -5,7 +5,7 @@ GCNetworkReachability monitors the network state on iOS and OS X devices. Full A
 
 The API is inspired by Apple's Reachability class but the implementation is built from the ground up to utilize modern LLVM compiler features (Objective-C object literal syntax, Blocks, ARC, etc) and to support asynchronous GCD (libdispatch).
 
-Library is in **beta** status: It still needs full unit-testing.
+Library is in **beta** status: Method calls to test IP addresses still need to be fully unit-tested.
 
 License
 -------
