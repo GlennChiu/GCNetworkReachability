@@ -75,9 +75,9 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 - (BOOL)isReachableViaWWAN;
 #endif
 
-- (void)startNonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
+- (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
 
-- (void)startNonitoringNetworkReachabilityWithNotification;
+- (void)startMonitoringNetworkReachabilityWithNotification;
 
 - (void)stopMonitoringNetworkReachability;
 

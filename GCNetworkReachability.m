@@ -146,7 +146,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     {
         if (!reachability)
         {
-            GCNRLog(@"Creating SNNetworkReachabilityRef failed with error code: %s", SCErrorString(SCError()));
+            GCNRLog(@"Creating SCNetworkReachabilityRef failed with error code: %s", SCErrorString(SCError()));
             return nil;
         }
         
@@ -285,7 +285,7 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
     GCNetworkReachabilityPostNotification(info, status);
 }
 
-- (void)startNonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block
+- (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block
 {
     if (!block) return;
     
@@ -314,7 +314,7 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
     [self createReachabilityQueue];
 }
 
-- (void)startNonitoringNetworkReachabilityWithNotification
+- (void)startMonitoringNetworkReachabilityWithNotification
 {
     SCNetworkReachabilityContext context = {
         
