@@ -29,6 +29,7 @@
 // THE SOFTWARE.
 
 #import "GCNetworkReachability.h"
+#import <arpa/inet.h>
 
 #if ! __has_feature(objc_arc)
 #error GCNetworkReachability is ARC only. Use -fobjc-arc as compiler flag for this library
@@ -101,9 +102,18 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 	return [self reachabilityWithHostAddress:&address];
 }
 
++ (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress
+{
+    if (!internetAddress) return nil;
+    
+    const char *addr = [internetAddress UTF8String];
+    const in_addr_t inetAddr = inet_addr(addr);
+    return [self reachabilityWithInternetAddress:inetAddr];
+}
+
 + (GCNetworkReachability *)reachabilityForInternetConnection
 {
-    static const u_int32_t zeroAddr = 0x00000000;
+    const in_addr_t zeroAddr = 0x00000000;
     return [self reachabilityWithInternetAddress:zeroAddr];
 }
 
@@ -111,7 +121,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 {
     _localWiFi = YES;
     
-    static const u_int32_t localAddr = 0xA9FE0000; /* == 169.254.0.0 */
+    const in_addr_t localAddr = 0xA9FE0000;
     return [self reachabilityWithInternetAddress:localAddr];
 }
 
@@ -147,6 +157,18 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     return self;
 }
 
+- (void)createReachabilityQueue
+{
+    self->_reachability_queue = dispatch_queue_create("com.gcnetworkreachability.queue", DISPATCH_QUEUE_SERIAL);
+    
+    if (!SCNetworkReachabilitySetDispatchQueue(self->_networkReachability, self->_reachability_queue))
+    {
+        GCNRLog(@"SCNetworkReachabilitySetDispatchQueue() failed with error code: %s", SCErrorString(SCError()));
+        
+        [self releaseReachabilityQueue];
+    }
+}
+
 - (void)releaseReachabilityQueue
 {
     if (self->_networkReachability) SCNetworkReachabilitySetDispatchQueue(self->_networkReachability, NULL);
@@ -160,7 +182,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 
 - (void)dealloc
 {
-    [self stopNotifier];
+    [self stopMonitoringNetworkReachability];
     
     if (self->_networkReachability)
     {
@@ -245,84 +267,74 @@ static void GCNetworkReachabilityReleaseCallback(const void *info)
 
 static void GCNetworkReachabilityPostNotification(void *info, GCNetworkReachabilityStatus status)
 {
-    dispatch_block_t notif_blk = ^{
-        
-        [[NSNotificationCenter defaultCenter] postNotificationName:kGCNetworkReachabilityDidChangeNotification
-                                                            object:(__bridge GCNetworkReachability *)info
-                                                          userInfo:@{kGCNetworkReachabilityStatusKey : @(status)}];
-    };
-    
-    dispatch_async(dispatch_get_main_queue(), notif_blk);
+    [[NSNotificationCenter defaultCenter] postNotificationName:kGCNetworkReachabilityDidChangeNotification
+                                                        object:(__bridge GCNetworkReachability *)info
+                                                      userInfo:@{kGCNetworkReachabilityStatusKey : @(status)}];
 }
 
-static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info)
+static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info)
 {
     GCNetworkReachabilityStatus status = GCReachabilityStatusForFlags(flags);
     void(^cb_blk)(GCNetworkReachabilityStatus status) = (__bridge void(^)(GCNetworkReachabilityStatus status))info;
     if (cb_blk) cb_blk(status);
 }
 
-static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info)
+static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info)
 {
     GCNetworkReachabilityStatus status = GCReachabilityStatusForFlags(flags);
     GCNetworkReachabilityPostNotification(info, status);
 }
 
-- (void)startNotifierWithHandler:(void(^)(GCNetworkReachabilityStatus status))block
+- (void)startNonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block
 {
-    if (block)
+    if (!block) return;
+    
+    self->_handler_blk = [block copy];
+    
+    void(^cb_blk)(GCNetworkReachabilityStatus status) = ^(GCNetworkReachabilityStatus status) {
+        
+        self->_handler_blk(status);
+    };
+    
+    SCNetworkReachabilityContext context = {
+        
+        0,
+        (__bridge void *)(cb_blk),
+        GCNetworkReachabilityRetainCallback,
+        GCNetworkReachabilityReleaseCallback,
+        NULL
+    };
+    
+    if (!SCNetworkReachabilitySetCallback(self->_networkReachability, GCNetworkReachabilityCallbackWithBlock, &context))
     {
-        self->_handler_blk = [block copy];
-        
-        void(^cb_blk)(GCNetworkReachabilityStatus status) = ^(GCNetworkReachabilityStatus status) {
-            
-            self->_handler_blk(status);
-        };
-        
-        SCNetworkReachabilityContext context = {
-            
-            0,
-            (__bridge void *)(cb_blk),
-            GCNetworkReachabilityRetainCallback,
-            GCNetworkReachabilityReleaseCallback,
-            NULL
-        };
-        
-        if (!SCNetworkReachabilitySetCallback(self->_networkReachability, GCNetworkReachabilityCallbackWithBlock, &context))
-        {
-            GCNRLog(@"SCNetworkReachabilitySetCallbackWithBlock() failed with error code: %s", SCErrorString(SCError()));
-            return;
-        }
-    }
-    else
-    {
-        SCNetworkReachabilityContext context = {
-            
-            0,
-            (__bridge void *)(self),
-            NULL,
-            NULL,
-            NULL
-        };
-        
-        if (!SCNetworkReachabilitySetCallback(self->_networkReachability, GCNetworkReachabilityCallback, &context))
-        {
-            GCNRLog(@"SCNetworkReachabilitySetCallback() failed with error code: %s", SCErrorString(SCError()));
-            return;
-        }
+        GCNRLog(@"SCNetworkReachabilitySetCallbackWithBlock() failed with error code: %s", SCErrorString(SCError()));
+        return;
     }
     
-    self->_reachability_queue = dispatch_queue_create("com.gcnetworkreachability.queue", DISPATCH_QUEUE_SERIAL);
-    
-    if (!SCNetworkReachabilitySetDispatchQueue(self->_networkReachability, self->_reachability_queue))
-    {
-        GCNRLog(@"SCNetworkReachabilitySetDispatchQueue() failed with error code: %s", SCErrorString(SCError()));
-        
-        [self releaseReachabilityQueue];
-    }
+    [self createReachabilityQueue];
 }
 
-- (void)stopNotifier
+- (void)startNonitoringNetworkReachabilityWithNotification
+{
+    SCNetworkReachabilityContext context = {
+        
+        0,
+        (__bridge void *)(self),
+        NULL,
+        NULL,
+        NULL
+    };
+    
+    if (!SCNetworkReachabilitySetCallback(self->_networkReachability, GCNetworkReachabilityCallback, &context))
+    {
+        GCNRLog(@"SCNetworkReachabilitySetCallback() failed with error code: %s", SCErrorString(SCError()));
+        return;
+    }
+    
+    [self createReachabilityQueue];
+}
+
+- (void)stopMonitoringNetworkReachability
 {
     if (self->_networkReachability) SCNetworkReachabilitySetCallback(self->_networkReachability, NULL, NULL);
     

@@ -50,6 +50,8 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 
 + (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress;
 
++ (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress;
+
 + (GCNetworkReachability *)reachabilityForInternetConnection;
 
 + (GCNetworkReachability *)reachabilityForLocalWiFi;
@@ -73,8 +75,10 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 - (BOOL)isReachableViaWWAN;
 #endif
 
-- (void)startNotifierWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
+- (void)startNonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
 
-- (void)stopNotifier;
+- (void)startNonitoringNetworkReachabilityWithNotification;
+
+- (void)stopMonitoringNetworkReachability;
 
 @end
