@@ -66,8 +66,8 @@ static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef targ
 static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info);
 static void GCNetworkReachabilityPostNotification(void *info, GCNetworkReachabilityStatus status);
 static void GCNetworkReachabilityPrintFlags(SCNetworkReachabilityFlags flags);
-static struct sockaddr_in GCNetworkReachabilityCreateSocketAddress(void);
-static struct sockaddr_in6 GCNetworkReachabilityCreateIPv6SocketAddress(void);
+static void GCNetworkReachabilitySetSocketAddress(struct sockaddr_in *addr);
+static void GCNetworkReachabilitySetIPv6SocketAddress(struct sockaddr_in6 *addr);
 
 static BOOL _localWiFi;
 
@@ -108,37 +108,42 @@ static void GCNetworkReachabilityPrintFlags(SCNetworkReachabilityFlags flags)
 
 + (GCNetworkReachability *)reachabilityWithHostName:(NSString *)hostName
 {
-    return hostName ? [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])] : nil;
+    assert(hostName);
+    
+    return [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])];
 }
 
 + (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress
 {
-    return hostAddress ? [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)] : nil;
+    assert(hostAddress);
+    
+    return [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)];
 }
 
-static struct sockaddr_in GCNetworkReachabilityCreateSocketAddress(void)
+static void GCNetworkReachabilitySetSocketAddress(struct sockaddr_in *addr)
 {
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-	addr.sin_len = sizeof(addr);
-	addr.sin_family = AF_INET;
-    return addr;
+    memset(addr, 0, sizeof(struct sockaddr_in));
+	addr->sin_len = sizeof(struct sockaddr_in);
+	addr->sin_family = AF_INET;
 }
 
 + (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress
 {
-    struct sockaddr_in addr = GCNetworkReachabilityCreateSocketAddress();
+    assert(internetAddress >= (in_addr_t)0);
+    
+    struct sockaddr_in addr;
+    GCNetworkReachabilitySetSocketAddress(&addr);
 	addr.sin_addr.s_addr = htonl(internetAddress);
 	return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
 + (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress
 {
-    if (!internetAddress) return nil;
+    assert(internetAddress);
     
-    struct sockaddr_in addr = GCNetworkReachabilityCreateSocketAddress();
+    struct sockaddr_in addr;
+    GCNetworkReachabilitySetSocketAddress(&addr);
     inet_pton(AF_INET, [internetAddress UTF8String], &addr.sin_addr);
-    
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
@@ -156,38 +161,38 @@ static struct sockaddr_in GCNetworkReachabilityCreateSocketAddress(void)
     return [self reachabilityWithInternetAddress:localAddr];
 }
 
-static struct sockaddr_in6 GCNetworkReachabilityCreateIPv6SocketAddress(void)
+static void GCNetworkReachabilitySetIPv6SocketAddress(struct sockaddr_in6 *addr)
 {
-    struct sockaddr_in6 addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin6_len = sizeof(addr);
-    addr.sin6_family = AF_INET6;
-    return addr;
+    memset(addr, 0, sizeof(struct sockaddr_in6));
+    addr->sin6_len = sizeof(struct sockaddr_in6);
+    addr->sin6_family = AF_INET6;
 }
 
 + (GCNetworkReachability *)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress
 {
+    assert(&internetAddress);
+    
     char strAddr[INET6_ADDRSTRLEN];
     
-    struct sockaddr_in6 addr = GCNetworkReachabilityCreateIPv6SocketAddress();
+    struct sockaddr_in6 addr;
+    GCNetworkReachabilitySetIPv6SocketAddress(&addr);
     addr.sin6_addr = internetAddress;
     inet_ntop(AF_INET6, &addr.sin6_addr, strAddr, INET6_ADDRSTRLEN);
     inet_pton(AF_INET6, strAddr, &addr.sin6_addr);
-    
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
 + (GCNetworkReachability *)reachabilityWithIPv6AddressString:(NSString *)internetAddress
 {
-    if (!internetAddress) return nil;
+    assert(internetAddress);
     
-    struct sockaddr_in6 addr = GCNetworkReachabilityCreateIPv6SocketAddress();
+    struct sockaddr_in6 addr;
+    GCNetworkReachabilitySetIPv6SocketAddress(&addr);
     inet_pton(AF_INET6, [internetAddress UTF8String], &addr.sin6_addr);
-    
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
-- (id)initWithHostAddress:(const struct sockaddr_in *)hostAddress
+- (id)initWithHostAddress:(const struct sockaddr *)hostAddress
 {
     assert(hostAddress);
     
@@ -357,9 +362,13 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
     
     self->_handler_blk = [block copy];
     
+    __weak GCNetworkReachability *w_self = self;
+    
     void(^cb_blk)(GCNetworkReachabilityStatus status) = ^(GCNetworkReachabilityStatus status) {
         
-        self->_handler_blk(status);
+        GCNetworkReachability *s_self = w_self;
+        
+        if (s_self) s_self->_handler_blk(status);
     };
     
     SCNetworkReachabilityContext context = {
@@ -403,6 +412,8 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
 - (void)stopMonitoringNetworkReachability
 {
     if (self->_networkReachability) SCNetworkReachabilitySetCallback(self->_networkReachability, NULL, NULL);
+    
+    if (self->_handler_blk) self->_handler_blk = nil;
     
     [self releaseReachabilityQueue];
 }

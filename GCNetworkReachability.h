@@ -34,7 +34,7 @@
 
 typedef enum : unsigned char
 {
-    GCNetworkReachabilityStatusNotReachable = 1 << 0,
+    GCNetworkReachabilityStatusNotReachable = (1 << 0),
     GCNetworkReachabilityStatusWWAN         = (1 << 1) | GCNetworkReachabilityStatusNotReachable,
     GCNetworkReachabilityStatusWiFi         = (1 << 2) | GCNetworkReachabilityStatusNotReachable
 } GCNetworkReachabilityStatus;
@@ -61,11 +61,18 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 + (GCNetworkReachability *)reachabilityForLocalWiFi;
 
 
-- (id)initWithHostAddress:(const struct sockaddr_in *)hostAddress;
+- (id)initWithHostAddress:(const struct sockaddr *)hostAddress;
 
 - (id)initWithHostName:(NSString *)hostName;
 
 - (id)initWithReachability:(SCNetworkReachabilityRef)reachability;
+
+
+- (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
+
+- (void)startMonitoringNetworkReachabilityWithNotification;
+
+- (void)stopMonitoringNetworkReachability;
 
 
 - (GCNetworkReachabilityStatus)currentReachabilityStatus;
@@ -78,12 +85,5 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 #if TARGET_OS_IPHONE
 - (BOOL)isReachableViaWWAN;
 #endif
-
-
-- (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
-
-- (void)startMonitoringNetworkReachabilityWithNotification;
-
-- (void)stopMonitoringNetworkReachability;
 
 @end
