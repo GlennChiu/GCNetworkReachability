@@ -59,12 +59,15 @@
 #   endif
 #endif
 
-static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkConnectionFlags flags);
+static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkReachabilityFlags flags);
 static const void * GCNetworkReachabilityRetainCallback(const void *info);
 static void GCNetworkReachabilityReleaseCallback(const void *info);
 static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info);
 static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info);
 static void GCNetworkReachabilityPostNotification(void *info, GCNetworkReachabilityStatus status);
+static void GCNetworkReachabilityPrintFlags(SCNetworkReachabilityFlags flags);
+static struct sockaddr_in GCNetworkReachabilityCreateSocketAddress(void);
+static struct sockaddr_in6 GCNetworkReachabilityCreateIPv6SocketAddress(void);
 
 static BOOL _localWiFi;
 
@@ -82,38 +85,66 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     void(^_handler_blk)(GCNetworkReachabilityStatus status);
 }
 
+static void GCNetworkReachabilityPrintFlags(SCNetworkReachabilityFlags flags)
+{
+#if 1
+    GCNRLog(@"GCNetworkReachability Flag Status: %c%c %c%c%c%c%c%c%c",
+#if TARGET_OS_IPHONE
+            (flags & kSCNetworkReachabilityFlagsIsWWAN)               ? 'W' : '-',
+#else
+            '-',
+#endif
+            (flags & kSCNetworkReachabilityFlagsReachable)            ? 'R' : '-',
+            (flags & kSCNetworkReachabilityFlagsTransientConnection)  ? 't' : '-',
+            (flags & kSCNetworkReachabilityFlagsConnectionRequired)   ? 'c' : '-',
+            (flags & kSCNetworkReachabilityFlagsConnectionOnTraffic)  ? 'C' : '-',
+            (flags & kSCNetworkReachabilityFlagsInterventionRequired) ? 'i' : '-',
+            (flags & kSCNetworkReachabilityFlagsConnectionOnDemand)   ? 'D' : '-',
+            (flags & kSCNetworkReachabilityFlagsIsLocalAddress)       ? 'l' : '-',
+            (flags & kSCNetworkReachabilityFlagsIsDirect)             ? 'd' : '-'
+            );
+#endif
+}
+
 + (GCNetworkReachability *)reachabilityWithHostName:(NSString *)hostName
 {
     return hostName ? [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])] : nil;
 }
 
-+ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr_in *)hostAddress
++ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress
 {
     return hostAddress ? [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)] : nil;
 }
 
+static struct sockaddr_in GCNetworkReachabilityCreateSocketAddress(void)
+{
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+	addr.sin_len = sizeof(addr);
+	addr.sin_family = AF_INET;
+    return addr;
+}
+
 + (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress
 {
-    struct sockaddr_in address;
-	bzero(&address, sizeof(address));
-	address.sin_len = sizeof(address);
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = htonl(internetAddress);
-	return [self reachabilityWithHostAddress:&address];
+    struct sockaddr_in addr = GCNetworkReachabilityCreateSocketAddress();
+	addr.sin_addr.s_addr = htonl(internetAddress);
+	return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
 + (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress
 {
     if (!internetAddress) return nil;
     
-    const char *addr = [internetAddress UTF8String];
-    const in_addr_t inetAddr = inet_addr(addr);
-    return [self reachabilityWithInternetAddress:inetAddr];
+    struct sockaddr_in addr = GCNetworkReachabilityCreateSocketAddress();
+    inet_pton(AF_INET, [internetAddress UTF8String], &addr.sin_addr);
+    
+    return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
 + (GCNetworkReachability *)reachabilityForInternetConnection
 {
-    const in_addr_t zeroAddr = 0x00000000;
+    static const in_addr_t zeroAddr = INADDR_ANY;
     return [self reachabilityWithInternetAddress:zeroAddr];
 }
 
@@ -121,8 +152,39 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 {
     _localWiFi = YES;
     
-    const in_addr_t localAddr = 0xA9FE0000;
+    static const in_addr_t localAddr = IN_LINKLOCALNETNUM;
     return [self reachabilityWithInternetAddress:localAddr];
+}
+
+static struct sockaddr_in6 GCNetworkReachabilityCreateIPv6SocketAddress(void)
+{
+    struct sockaddr_in6 addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin6_len = sizeof(addr);
+    addr.sin6_family = AF_INET6;
+    return addr;
+}
+
++ (GCNetworkReachability *)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress
+{
+    char strAddr[INET6_ADDRSTRLEN];
+    
+    struct sockaddr_in6 addr = GCNetworkReachabilityCreateIPv6SocketAddress();
+    addr.sin6_addr = internetAddress;
+    inet_ntop(AF_INET6, &addr.sin6_addr, strAddr, INET6_ADDRSTRLEN);
+    inet_pton(AF_INET6, strAddr, &addr.sin6_addr);
+    
+    return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
+}
+
++ (GCNetworkReachability *)reachabilityWithIPv6AddressString:(NSString *)internetAddress
+{
+    if (!internetAddress) return nil;
+    
+    struct sockaddr_in6 addr = GCNetworkReachabilityCreateIPv6SocketAddress();
+    inet_pton(AF_INET6, [internetAddress UTF8String], &addr.sin6_addr);
+    
+    return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
 - (id)initWithHostAddress:(const struct sockaddr_in *)hostAddress
@@ -191,7 +253,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
     }
 }
 
-static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkConnectionFlags flags)
+static GCNetworkReachabilityStatus GCReachabilityStatusForFlags(SCNetworkReachabilityFlags flags)
 {
     GCNetworkReachabilityStatus status = GCNetworkReachabilityStatusNotReachable;
     
@@ -277,12 +339,16 @@ static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef __un
     GCNetworkReachabilityStatus status = GCReachabilityStatusForFlags(flags);
     void(^cb_blk)(GCNetworkReachabilityStatus status) = (__bridge void(^)(GCNetworkReachabilityStatus status))info;
     if (cb_blk) cb_blk(status);
+    
+    GCNetworkReachabilityPrintFlags(flags);
 }
 
 static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info)
 {
     GCNetworkReachabilityStatus status = GCReachabilityStatusForFlags(flags);
     GCNetworkReachabilityPostNotification(info, status);
+    
+    GCNetworkReachabilityPrintFlags(flags);
 }
 
 - (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block

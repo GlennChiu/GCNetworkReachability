@@ -46,11 +46,15 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 
 + (GCNetworkReachability *)reachabilityWithHostName:(NSString *)hostName;
 
-+ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr_in *)hostAddress;
++ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress;
 
 + (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress;
 
 + (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress;
+
++ (GCNetworkReachability *)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress;
+
++ (GCNetworkReachability *)reachabilityWithIPv6AddressString:(NSString *)internetAddress;
 
 + (GCNetworkReachability *)reachabilityForInternetConnection;
 
@@ -74,6 +78,7 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 #if TARGET_OS_IPHONE
 - (BOOL)isReachableViaWWAN;
 #endif
+
 
 - (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
 
