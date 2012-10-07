@@ -7,10 +7,11 @@ The API is inspired by Apple's Reachability class but the implementation is buil
 
 Features / Design
 -----------------
-* Network monitoring is done via a secondary thread (via libdispatch) and thus fully asynchronous. Apple's Reachability class uses a (main thread) blocking synchronous API.
-* Supports modern LLVM compiler features like Blocks.
+* Network monitoring is done on a secondary thread (via libdispatch) and thus fully asynchronous. Resolving DNS, which can take up to 30 seconds on a slow connection, will not block the main thread (and will not invoke the watchdog timer).
+* Supports modern Clang / LLVM compiler features like Blocks.
+* Uses POSIX socket API instead of BSD sockets.
 * Full support for OS X.
-* Full ARC support
+* Full ARC support.
 * Supports IPv4 and IPv6 addresses.
 
 Requirements
@@ -42,13 +43,12 @@ self.reachability = [GCNetworkReachability reachabilityWithHostName:@"www.google
         case GCNetworkReachabilityStatusNotReachable:
             NSLog(@"No connection");
             break;
-        case GCNetworkReachabilityStatusWiFi:
         case GCNetworkReachabilityStatusWWAN:
+        case GCNetworkReachabilityStatusWiFi:
             // e.g. start syncing...
             break;
     }
 }];
-
 ```
 If you use notifications, you can access the instance of `GCNetworkReachability` via the block parameter `NSNotification`. The status value can be accessed inside the `userInfo` dictionary via the key `kGCNetworkReachabilityStatusKey`.
 
@@ -68,32 +68,48 @@ self.observer = [[NSNotificationCenter defaultCenter] addObserverForName:kGCNetw
                                                                       case GCNetworkReachabilityStatusNotReachable:
                                                                           NSLog(@"No connection");
                                                                           break;
-                                                                      case GCNetworkReachabilityStatusWiFi:
-                                                                          NSLog(@"Reachable via WiFi");
-                                                                          break;
                                                                       case GCNetworkReachabilityStatusWWAN:
                                                                           NSLog(@"Reachable via WWAN");
                                                                           break;
+                                                                      case GCNetworkReachabilityStatusWiFi:
+                                                                          NSLog(@"Reachable via WiFi");
+                                                                          break;
+                                                                      
                                                                   }
                                                               }];
-
-
 ```
 
-You are not forced to start monitoring the network state, just to check the reachability. It's also possible to check the network state yourself, e.g.:
+You are not forced to start monitoring the network state, just to check the reachability. It's also possible to check the current network state when you need to:
 
 ```
-GCNetworkReachability *reachability = [GCNetworkReachability reachabilityWithHostName:@"www.google.com"];
+GCNetworkReachability *reachability = [GCNetworkReachability reachabilityForInternetConnection];
 
 if ([reachability isReachable])
 {
 	// do stuff that requires an internet connection…
 }
 
-if ([reachability currentReachabilityStatus] == GCNetworkreachabilityStatusWWAN)
-{
-	// e.g. download smaller file sized images...
+...
+
+switch ([reachability currentReachabilityStatus]) {
+    case GCNetworkReachabilityStatusWWAN:
+        // e.g. download smaller file sized images...
+        break;
+    case GCNetworkReachabilityStatusWiFi:
+        // e.g. download default file sized images...
+        break;
+    default:
+        break;
 }
+```
+Check for IP address reachability:
+
+```
+// IPv4 address
+GCNetworkReachability *reachability = [GCNetworkReachability reachabilityWithInternetAddressString:@"173.194.43.0"];
+
+// IPv6 address
+GCNetworkReachability *reachability = [GCNetworkReachability reachabilityWithIPv6AddressString:@"2a00:1450:4007:801::1013"];
 ```
 
 License
