@@ -10,7 +10,7 @@ Features / Design
 * Network monitoring is done on a secondary thread (via libdispatch) and thus fully asynchronous. Resolving DNS, which can take up to 30 seconds on a slow connection, will not block the main thread (and will not invoke the watchdog timer).
 * Supports modern Clang / LLVM compiler features like Blocks.
 * Uses POSIX socket API instead of BSD sockets.
-* Full support for OS X.
+* Full support for iOS and OS X.
 * Full ARC support.
 * Supports IPv4 and IPv6 addresses.
 
