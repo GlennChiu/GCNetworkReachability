@@ -3,7 +3,7 @@ GCNetworkReachability
 
 GCNetworkReachability monitors the network state on iOS and OS X devices. Full ARC and GCD support.
 
-The API is inspired by Apple's Reachability class but the implementation is built from the ground up to utilize modern LLVM compiler features and POSIX standards. It also runs concurrently with GCD (libdispatch) and has OS X and IPv6 support.
+The API is inspired by Apple's Reachability class for iOS but the implementation is built from the ground up to utilize modern LLVM compiler features and POSIX standards. It also runs concurrently with GCD (libdispatch) and has OS X and IPv6 support.
 
 Features / Design
 -----------------
@@ -28,8 +28,6 @@ Usage
 -----
 The recommended way is to use a global instance variable of `GCNetworkReachability` in a class that stays alive during the whole runtime of your application (e.g. AppDelegate). This ensures that `GCNetworkReachability` can keep monitoring the network state of the device. When you're done monitoring, always call `-stopMonitoringNetworkReachability` to clean up memory and to stop the monitoring process.
 
-The application can get reachability callbacks via a block handler or via a notification. The callbacks are called from a secondary thread, so make sure you dispatch back to the main thread if you need to (e.g. UI updates).
-
 Should you use the block handler or notification API? Well, notifications allow you to listen for changes in networking state in your whole project. If that's not necessary then you should use the handler as this requires less code and is more efficient for your application.
 
 Block handler example:
@@ -39,6 +37,7 @@ self.reachability = [GCNetworkReachability reachabilityWithHostName:@"www.google
 
 [self.reachability startMonitoringNetworkReachabilityWithHandler:^(GCNetworkReachabilityStatus status) {
         
+    // this block is called on the main thread   
     switch (status) {
         case GCNetworkReachabilityStatusNotReachable:
             NSLog(@"No connection");
@@ -59,7 +58,7 @@ Notification example:
 
 self.observer = [[NSNotificationCenter defaultCenter] addObserverForName:kGCNetworkReachabilityDidChangeNotification
                                                                   object:nil
-                                                                   queue:nil
+                                                                   queue:[NSOperationQueue mainQueue]
                                                               usingBlock:^(NSNotification *note) {
                                                                   
                                                                   GCNetworkReachabilityStatus status = [[note userInfo][kGCNetworkReachabilityStatusKey] integerValue];
@@ -79,7 +78,7 @@ self.observer = [[NSNotificationCenter defaultCenter] addObserverForName:kGCNetw
                                                               }];
 ```
 
-You are not forced to start monitoring the network state, just to check the reachability. It's also possible to check the current network state when you need to:
+You are not forced to start monitoring the network state, just to check the reachability. It's also possible to check the current network state when you need to via a single method. Please note that you should not use the hostname initializer for this, as this requires DNS to resolve the hostname before it can determine the reachability of that host. This may take time on certain network connections. Because of this, the API will return `GCNetworkReachabilityStatusNotReachable` until name resolution has completed:
 
 ```
 GCNetworkReachability *reachability = [GCNetworkReachability reachabilityForInternetConnection];
