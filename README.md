@@ -32,7 +32,7 @@ Should you use the block handler or notification API? Well, notifications allow 
 
 Block handler example:
 
-```
+```objectivec
 self.reachability = [GCNetworkReachability reachabilityWithHostName:@"www.google.com"];
 
 [self.reachability startMonitoringNetworkReachabilityWithHandler:^(GCNetworkReachabilityStatus status) {
@@ -53,7 +53,7 @@ If you use notifications, you can access the instance of `GCNetworkReachability`
 
 Notification example:
 
-```
+```objectivec
 [self.reachability startMonitoringNetworkReachabilityWithNotification];
 
 self.observer = [[NSNotificationCenter defaultCenter] addObserverForName:kGCNetworkReachabilityDidChangeNotification
@@ -80,7 +80,7 @@ self.observer = [[NSNotificationCenter defaultCenter] addObserverForName:kGCNetw
 
 You are not forced to start monitoring the network state, just to check the reachability. It's also possible to check the current network state when you need to via a single method. Please note that you should not use the hostname initializer for this, as this requires DNS to resolve the hostname before it can determine the reachability of that host. This may take time on certain network connections. Because of this, the API will return `GCNetworkReachabilityStatusNotReachable` until name resolution has completed:
 
-```
+```objectivec
 GCNetworkReachability *reachability = [GCNetworkReachability reachabilityForInternetConnection];
 
 if ([reachability isReachable])
@@ -103,7 +103,7 @@ switch ([reachability currentReachabilityStatus]) {
 ```
 Check for IP address reachability:
 
-```
+```objectivec
 // IPv4 address
 GCNetworkReachability *reachability = [GCNetworkReachability reachabilityWithInternetAddressString:@"173.194.43.0"];
 
