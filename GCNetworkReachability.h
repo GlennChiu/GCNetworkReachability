@@ -2,7 +2,7 @@
 //  Created by Glenn Chiu on 26/09/2012.
 //  Copyright (c) 2012 Glenn Chiu. All rights reserved.
 //
-//  Version 1.1
+//  Version 1.2
 
 //  This code is distributed under the terms and conditions of the MIT license.
 
@@ -30,13 +30,13 @@
 #import <SystemConfiguration/SystemConfiguration.h>
 #import <netinet/in.h>
 
-#define PRINT_REACHABILITY_FLAG_STATUS 1
+#define PRINT_REACHABILITY_FLAGS 0
 
 typedef enum : unsigned char
 {
-    GCNetworkReachabilityStatusNotReachable = (1 << 0),
-    GCNetworkReachabilityStatusWWAN         = (1 << 1) | GCNetworkReachabilityStatusNotReachable,
-    GCNetworkReachabilityStatusWiFi         = (1 << 2) | GCNetworkReachabilityStatusNotReachable
+    GCNetworkReachabilityStatusNotReachable = 1 << 0,
+    GCNetworkReachabilityStatusWWAN         = 1 << 1,
+    GCNetworkReachabilityStatusWiFi         = 1 << 2
 } GCNetworkReachabilityStatus;
 
 extern NSString * const kGCNetworkReachabilityDidChangeNotification;
@@ -85,5 +85,7 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 #if TARGET_OS_IPHONE
 - (BOOL)isReachableViaWWAN;
 #endif
+
+- (SCNetworkReachabilityFlags)reachabilityFlags;
 
 @end
