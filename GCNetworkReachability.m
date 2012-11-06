@@ -2,7 +2,7 @@
 //  Created by Glenn Chiu on 26/09/2012.
 //  Copyright (c) 2012 Glenn Chiu. All rights reserved.
 //
-//  Version 1.2
+//  Version 1.2.1
 
 //  This code is distributed under the terms and conditions of the MIT license.
 
@@ -352,7 +352,8 @@ static void GCNetworkReachabilityGetFlags(void *context)
     if (!SCNetworkReachabilityGetFlags(ctx->target, ctx->value))
     {
         GCNRLog(@"SCNetworkReachabilityGetFlags() failed with error code: %s", SCErrorString(SCError()));
-        ctx->value = 0;
+        uint32_t zeroVal = 0;
+        ctx->value = &zeroVal;
     }
 }
 

@@ -2,7 +2,7 @@
 //  Created by Glenn Chiu on 26/09/2012.
 //  Copyright (c) 2012 Glenn Chiu. All rights reserved.
 //
-//  Version 1.2
+//  Version 1.2.1
 
 //  This code is distributed under the terms and conditions of the MIT license.
 
