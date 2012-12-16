@@ -41,6 +41,9 @@ typedef enum : unsigned char
 
 extern NSString * const kGCNetworkReachabilityDidChangeNotification;
 extern NSString * const kGCNetworkReachabilityStatusKey;
+extern NSString * const kGCNetworkReachabilityFlagsKey;
+
+typedef void (^GCNetworkReachabilityBlock)(GCNetworkReachabilityStatus status, SCNetworkReachabilityFlags flags);
 
 @interface GCNetworkReachability : NSObject
 
@@ -68,7 +71,7 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 - (id)initWithReachability:(SCNetworkReachabilityRef)reachability;
 
 
-- (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
+- (void)startMonitoringNetworkReachabilityWithHandler:(GCNetworkReachabilityBlock)block;
 
 - (void)startMonitoringNetworkReachabilityWithNotification;
 
