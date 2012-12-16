@@ -64,6 +64,7 @@ static dispatch_queue_t _reachability_queue, _lock_queue;
 
 NSString * const kGCNetworkReachabilityDidChangeNotification    = @"NetworkReachabilityDidChangeNotification";
 NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReachabilityStatusKey";
+NSString * const kGCNetworkReachabilityFlagsKey                 = @"NetworkReachabilityFlagsKey";
 
 @interface GCNetworkReachability ()
 
@@ -72,7 +73,7 @@ NSString * const kGCNetworkReachabilityStatusKey                = @"NetworkReach
 @implementation GCNetworkReachability
 {
     SCNetworkReachabilityRef _networkReachability;
-    void(^_handler_blk)(GCNetworkReachabilityStatus);
+    GCNetworkReachabilityBlock _handler_blk;
 }
 
 static inline dispatch_queue_t GCNetworkReachabilityLockQueue()
@@ -372,7 +373,7 @@ static void GCNetworkReachabilityGetFlags(void *context)
 
 static const void * GCNetworkReachabilityRetainCallback(const void *info)
 {
-    void(^blk)(GCNetworkReachabilityStatus) = (__bridge void(^)(GCNetworkReachabilityStatus))info;
+    GCNetworkReachabilityBlock blk = (__bridge GCNetworkReachabilityBlock)info;
     return CFBridgingRetain(blk);
 }
 
@@ -384,8 +385,8 @@ static void GCNetworkReachabilityReleaseCallback(const void *info)
 static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info)
 {
     GCNetworkReachabilityStatus status = GCNetworkReachabilityStatusForFlags(flags);
-    void(^cb_blk)(GCNetworkReachabilityStatus) = (__bridge void(^)(GCNetworkReachabilityStatus))info;
-    if (cb_blk) cb_blk(status);
+    GCNetworkReachabilityBlock cb_blk = (__bridge GCNetworkReachabilityBlock)info;
+    if (cb_blk) cb_blk(status, flags);
     
     GCNetworkReachabilityPrintFlags(flags);
 }
@@ -393,14 +394,16 @@ static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef __un
 static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info)
 {
     GCNetworkReachabilityStatus status = GCNetworkReachabilityStatusForFlags(flags);
+    NSDictionary *dict = @{kGCNetworkReachabilityStatusKey : @(status), kGCNetworkReachabilityFlagsKey : @(flags)};
+    
     [[NSNotificationCenter defaultCenter] postNotificationName:kGCNetworkReachabilityDidChangeNotification
                                                         object:(__bridge GCNetworkReachability *)info
-                                                      userInfo:@{kGCNetworkReachabilityStatusKey : @(status)}];
+                                                      userInfo:dict];
     
     GCNetworkReachabilityPrintFlags(flags);
 }
 
-- (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus))block
+- (void)startMonitoringNetworkReachabilityWithHandler:(GCNetworkReachabilityBlock)block
 {
     if (!block) return;
     
@@ -408,10 +411,10 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
     
     __weak typeof(self) w_self = self;
     
-    void(^cb_blk)(GCNetworkReachabilityStatus) = ^(GCNetworkReachabilityStatus status) {
+    GCNetworkReachabilityBlock cb_blk = ^(GCNetworkReachabilityStatus status, SCNetworkReachabilityFlags flags) {
         
         __strong typeof(w_self) s_self = w_self;
-        if (s_self) dispatch_async(dispatch_get_main_queue(), ^{s_self->_handler_blk(status);});
+        if (s_self) dispatch_async(dispatch_get_main_queue(), ^{s_self->_handler_blk(status, flags);});
     };
     
     SCNetworkReachabilityContext context = {
