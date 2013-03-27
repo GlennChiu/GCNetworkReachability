@@ -1,12 +1,9 @@
 //
-//  Created by Glenn Chiu on 26/09/2012.
-//  Copyright (c) 2012 Glenn Chiu. All rights reserved.
+//  Version 1.3.0
 //
-//  Version 1.2.1
-
 //  This code is distributed under the terms and conditions of the MIT license.
-
-//  Copyright (c) 2012 Glenn Chiu
+//
+//  Copyright (c) 2013 Glenn Chiu
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +27,7 @@
 #import <arpa/inet.h>
 
 #if ! __has_feature(objc_arc)
-#error GCNetworkReachability is ARC only. Use -fobjc-arc as compiler flag for this library
+#   error GCNetworkReachability is ARC only. Use -fobjc-arc as compiler flag for this library
 #endif
 
 #ifdef DEBUG
@@ -101,14 +98,14 @@ static void GCNetworkReachabilityPrintFlags(SCNetworkReachabilityFlags flags)
 #endif
 }
 
-+ (GCNetworkReachability *)reachabilityWithHostName:(NSString *)hostName
++ (instancetype)reachabilityWithHostName:(NSString *)hostName
 {
     assert(hostName);
     
     return [[self alloc] initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])];
 }
 
-+ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress
++ (instancetype)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress
 {
     assert(hostAddress);
     
@@ -122,7 +119,7 @@ static void GCNetworkReachabilitySetSocketAddress(struct sockaddr_in *addr)
 	addr->sin_family = AF_INET;
 }
 
-+ (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress
++ (instancetype)reachabilityWithInternetAddress:(in_addr_t)internetAddress
 {
     assert(internetAddress >= (in_addr_t)0);
     
@@ -132,7 +129,7 @@ static void GCNetworkReachabilitySetSocketAddress(struct sockaddr_in *addr)
 	return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
-+ (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress
++ (instancetype)reachabilityWithInternetAddressString:(NSString *)internetAddress
 {
     assert(internetAddress);
     
@@ -142,13 +139,13 @@ static void GCNetworkReachabilitySetSocketAddress(struct sockaddr_in *addr)
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
-+ (GCNetworkReachability *)reachabilityForInternetConnection
++ (instancetype)reachabilityForInternetConnection
 {
     static const in_addr_t zeroAddr = INADDR_ANY;
     return [self reachabilityWithInternetAddress:zeroAddr];
 }
 
-+ (GCNetworkReachability *)reachabilityForLocalWiFi
++ (instancetype)reachabilityForLocalWiFi
 {
     _localWiFi = YES;
     
@@ -163,7 +160,7 @@ static void GCNetworkReachabilitySetIPv6SocketAddress(struct sockaddr_in6 *addr)
     addr->sin6_family = AF_INET6;
 }
 
-+ (GCNetworkReachability *)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress
++ (instancetype)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress
 {
     assert(&internetAddress);
     
@@ -177,7 +174,7 @@ static void GCNetworkReachabilitySetIPv6SocketAddress(struct sockaddr_in6 *addr)
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
-+ (GCNetworkReachability *)reachabilityWithIPv6AddressString:(NSString *)internetAddress
++ (instancetype)reachabilityWithIPv6AddressString:(NSString *)internetAddress
 {
     assert(internetAddress);
     
@@ -187,21 +184,21 @@ static void GCNetworkReachabilitySetIPv6SocketAddress(struct sockaddr_in6 *addr)
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
-- (id)initWithHostAddress:(const struct sockaddr *)hostAddress
+- (instancetype)initWithHostAddress:(const struct sockaddr *)hostAddress
 {
     assert(hostAddress);
     
     return [self initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)];
 }
 
-- (id)initWithHostName:(NSString *)hostName
+- (instancetype)initWithHostName:(NSString *)hostName
 {
     assert(hostName);
     
     return [self initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])];
 }
 
-- (id)initWithReachability:(SCNetworkReachabilityRef)reachability
+- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability
 {
     self = [super init];
     if (self)

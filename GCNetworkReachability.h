@@ -1,12 +1,9 @@
 //
-//  Created by Glenn Chiu on 26/09/2012.
-//  Copyright (c) 2012 Glenn Chiu. All rights reserved.
+//  Version 1.3.0
 //
-//  Version 1.2.1
-
 //  This code is distributed under the terms and conditions of the MIT license.
-
-//  Copyright (c) 2012 Glenn Chiu
+//
+//  Copyright (c) 2013 Glenn Chiu
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -44,28 +41,28 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 
 @interface GCNetworkReachability : NSObject
 
-+ (GCNetworkReachability *)reachabilityWithHostName:(NSString *)hostName;
++ (instancetype)reachabilityWithHostName:(NSString *)hostName;
 
-+ (GCNetworkReachability *)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress;
++ (instancetype)reachabilityWithHostAddress:(const struct sockaddr *)hostAddress;
 
-+ (GCNetworkReachability *)reachabilityWithInternetAddress:(in_addr_t)internetAddress;
++ (instancetype)reachabilityWithInternetAddress:(in_addr_t)internetAddress;
 
-+ (GCNetworkReachability *)reachabilityWithInternetAddressString:(NSString *)internetAddress;
++ (instancetype)reachabilityWithInternetAddressString:(NSString *)internetAddress;
 
-+ (GCNetworkReachability *)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress;
++ (instancetype)reachabilityWithIPv6Address:(const struct in6_addr)internetAddress;
 
-+ (GCNetworkReachability *)reachabilityWithIPv6AddressString:(NSString *)internetAddress;
++ (instancetype)reachabilityWithIPv6AddressString:(NSString *)internetAddress;
 
-+ (GCNetworkReachability *)reachabilityForInternetConnection;
++ (instancetype)reachabilityForInternetConnection;
 
-+ (GCNetworkReachability *)reachabilityForLocalWiFi;
++ (instancetype)reachabilityForLocalWiFi;
 
 
-- (id)initWithHostAddress:(const struct sockaddr *)hostAddress;
+- (instancetype)initWithHostAddress:(const struct sockaddr *)hostAddress;
 
-- (id)initWithHostName:(NSString *)hostName;
+- (instancetype)initWithHostName:(NSString *)hostName;
 
-- (id)initWithReachability:(SCNetworkReachabilityRef)reachability;
+- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability;
 
 
 - (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
