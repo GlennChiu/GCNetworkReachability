@@ -1,7 +1,7 @@
 GCNetworkReachability
 =====================
 
-GCNetworkReachability monitors the network state on iOS and OS X devices. Full ARC and GCD support.
+GCNetworkReachability monitors the network state on iOS and OS X devices.
 
 The API is inspired by Apple's Reachability class for iOS but the implementation is built from the ground up to utilize modern LLVM compiler features and POSIX standards. It also runs concurrently with GCD (libdispatch) and has OS X and IPv6 support.
 
@@ -23,6 +23,8 @@ Installation
 Add the source code to your project. Link your target against the `SystemConfiguration.framework`.
 
 If you use this class in a non-ARC project, make sure you add the `-fobjc-arc` compiler flag for the implementation file.
+
+CocoaPods support: `pod 'GCNetworkReachability'`
 
 Usage
 -----
@@ -116,7 +118,7 @@ License
 
 This code is distributed under the terms and conditions of the MIT license.
 
-Copyright (c) 2012 Glenn Chiu
+Copyright (c) 2013 Glenn Chiu
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
