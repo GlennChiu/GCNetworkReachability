@@ -1,5 +1,5 @@
 //
-//  Version 1.3.0
+//  Version 1.3.1
 //
 //  This code is distributed under the terms and conditions of the MIT license.
 //
@@ -184,21 +184,21 @@ static void GCNetworkReachabilitySetIPv6SocketAddress(struct sockaddr_in6 *addr)
     return [self reachabilityWithHostAddress:(const struct sockaddr *)&addr];
 }
 
-- (instancetype)initWithHostAddress:(const struct sockaddr *)hostAddress
+- (id)initWithHostAddress:(const struct sockaddr *)hostAddress
 {
     assert(hostAddress);
     
     return [self initWithReachability:SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)hostAddress)];
 }
 
-- (instancetype)initWithHostName:(NSString *)hostName
+- (id)initWithHostName:(NSString *)hostName
 {
     assert(hostName);
     
     return [self initWithReachability:SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [hostName UTF8String])];
 }
 
-- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability
+- (id)initWithReachability:(SCNetworkReachabilityRef)reachability
 {
     self = [super init];
     if (self)
@@ -403,11 +403,11 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
     
     self->_handler_blk = [block copy];
     
-    __weak typeof(self) w_self = self;
+    GCNetworkReachability * __weak w_self = self;
     
     void(^cb_blk)(GCNetworkReachabilityStatus) = ^(GCNetworkReachabilityStatus status) {
         
-        __strong typeof(w_self) s_self = w_self;
+        GCNetworkReachability *s_self = w_self;
         if (s_self) dispatch_async(dispatch_get_main_queue(), ^{s_self->_handler_blk(status);});
     };
     

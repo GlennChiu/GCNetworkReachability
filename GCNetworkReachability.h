@@ -1,5 +1,5 @@
 //
-//  Version 1.3.0
+//  Version 1.3.1
 //
 //  This code is distributed under the terms and conditions of the MIT license.
 //
@@ -58,11 +58,11 @@ extern NSString * const kGCNetworkReachabilityStatusKey;
 + (instancetype)reachabilityForLocalWiFi;
 
 
-- (instancetype)initWithHostAddress:(const struct sockaddr *)hostAddress;
+- (id)initWithHostAddress:(const struct sockaddr *)hostAddress;
 
-- (instancetype)initWithHostName:(NSString *)hostName;
+- (id)initWithHostName:(NSString *)hostName;
 
-- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability;
+- (id)initWithReachability:(SCNetworkReachabilityRef)reachability;
 
 
 - (void)startMonitoringNetworkReachabilityWithHandler:(void(^)(GCNetworkReachabilityStatus status))block;
