@@ -1,5 +1,5 @@
 //
-//  Version 1.3.1
+//  Version 1.3.2
 //
 //  This code is distributed under the terms and conditions of the MIT license.
 //

@@ -1,5 +1,5 @@
 //
-//  Version 1.3.1
+//  Version 1.3.2
 //
 //  This code is distributed under the terms and conditions of the MIT license.
 //
@@ -300,7 +300,7 @@ static void GCNetworkReachabilityGetCurrentStatus(void *context)
 {
     struct GCNetworkReachabilityFlagContext *ctx = context;
     SCNetworkReachabilityFlags flags = (SCNetworkReachabilityFlags)0;
-    uint32_t currentStatus = GCNetworkReachabilityStatusNotReachable;
+    static uint32_t currentStatus = GCNetworkReachabilityStatusNotReachable;
     
     if (!SCNetworkReachabilityGetFlags(ctx->target, &flags))
     {
@@ -315,7 +315,7 @@ static void GCNetworkReachabilityGetCurrentStatus(void *context)
 
 - (GCNetworkReachabilityStatus)currentReachabilityStatus
 {
-    uint32_t status;
+    static uint32_t status;
     struct GCNetworkReachabilityFlagContext context = {
         
         self->_networkReachability,
@@ -349,14 +349,14 @@ static void GCNetworkReachabilityGetFlags(void *context)
     if (!SCNetworkReachabilityGetFlags(ctx->target, ctx->value))
     {
         GCNRLog(@"SCNetworkReachabilityGetFlags() failed with error code: %s", SCErrorString(SCError()));
-        uint32_t zeroVal = 0;
+        static uint32_t zeroVal = 0;
         ctx->value = &zeroVal;
     }
 }
 
 - (SCNetworkReachabilityFlags)reachabilityFlags
 {
-    uint32_t flags;
+    static uint32_t flags;
     struct GCNetworkReachabilityFlagContext context = {
         
         self->_networkReachability,
