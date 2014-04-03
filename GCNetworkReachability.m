@@ -390,9 +390,11 @@ static void GCNetworkReachabilityCallbackWithBlock(SCNetworkReachabilityRef __un
 static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info)
 {
     GCNetworkReachabilityStatus status = GCNetworkReachabilityStatusForFlags(flags);
-    [[NSNotificationCenter defaultCenter] postNotificationName:kGCNetworkReachabilityDidChangeNotification
-                                                        object:(__bridge GCNetworkReachability *)info
-                                                      userInfo:@{kGCNetworkReachabilityStatusKey : @(status)}];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:kGCNetworkReachabilityDidChangeNotification
+                                                            object:(__bridge GCNetworkReachability *)info
+                                                          userInfo:@{kGCNetworkReachabilityStatusKey : @(status)}];
+    });
     
     GCNetworkReachabilityPrintFlags(flags);
 }
