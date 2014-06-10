@@ -406,9 +406,14 @@ static void GCNetworkReachabilityCallback(SCNetworkReachabilityRef __unused targ
     GCNetworkReachability * __weak w_self = self;
     
     void(^cb_blk)(GCNetworkReachabilityStatus) = ^(GCNetworkReachabilityStatus status) {
-        
+
         GCNetworkReachability *s_self = w_self;
-        if (s_self) dispatch_async(dispatch_get_main_queue(), ^{s_self->_handler_blk(status);});
+        if (s_self) {
+            void(^_blk_cpy)(GCNetworkReachabilityStatus) = s_self->_handler_blk;
+            if(_blk_cpy) {
+                dispatch_async(dispatch_get_main_queue(), ^{_blk_cpy(status);});
+            }
+        }
     };
     
     SCNetworkReachabilityContext context = {
